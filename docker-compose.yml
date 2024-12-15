@@ -1,0 +1,99 @@
+services:
+    server:
+        image: 'nginx:stable-alpine'
+        build:
+            context: .
+            dockerfile: ./sima-develop/docker/nginx/Dockerfile
+        container_name: "sima-develop-nginx"
+        restart: always
+        env_file:
+            - ./sima-develop/.env
+        ports:
+            -   '${DOCKER_NGINX_PORT}:80'
+            -   '${DOCKER_NGINX_PORT_SSL}:443'
+        volumes:
+            -   ./sima-develop:/var/www/html
+#            -   ./sima-develop/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+            -   ./sima-develop/docker/nginx/backend.conf:/etc/nginx/conf.d/backend.conf
+            -   ./sima-develop/docker/nginx/front.conf:/etc/nginx/conf.d/front.conf
+        #command: sh -c "chown nginx:nginx /var/www/ -R"
+        #command: [ 'chown', 'nginx:nginx', '/var/www/', '-R' ]
+
+        depends_on:
+            - php
+            - mysql
+        networks:
+            - app-network
+    front:
+        build: ./sima-front/.
+        container_name: "sima-develop-front"
+        restart: always
+        env_file:
+            - ./sima-develop/.env
+        ports:
+#            -   '5000:5000'
+            -   '${DOCKER_FRONT_LOCAL_PORT}:${DOCKER_FRONT_PORT}'
+        networks:
+            - app-network
+
+    php:
+        build:
+            context: .
+#            args:
+#                uid: "${UID-1000}"
+#                gid: "${GID-1000}"
+            dockerfile: ./sima-develop/docker/php/Dockerfile
+        container_name: "sima-develop-backend"
+        restart: always
+        volumes:
+            -   ./sima-develop:/var/www/html
+#            -   ./sima-develop/vendor:/var/www/html/vendor
+            -   ./sima-develop/public:/var/www/html/public
+            -   ./sima-develop/storage:/var/www/html/storage
+        networks:
+            - app-network
+    mysql:
+        image: mysql:8.3
+        container_name: "sima-develop-mysql"
+        env_file:
+            - ./sima-develop/.env
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_USER: ${DB_USERNAME}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+        command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
+        ports:
+            - "${DOCKER_MYSQL_PORT}:3306"
+        volumes:
+            -   mysqldata:/var/lib/mysql
+
+        networks:
+            - app-network
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin:latest
+        container_name: "sima-develop-phpmyadmin"
+        env_file:
+            - ./sima-develop/.env
+        environment:
+            PMA_ARBITRARY : 1
+            PMA_HOST: mysql
+            PMA_PORT: 3306
+            PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            PMA_USER: root
+        ports:
+            - "${DOCKER_PHPMYADMIN_PORT}:80"
+        depends_on:
+            - mysql
+        restart: always
+
+        networks:
+            - app-network
+volumes:
+    mysqldata:
+        driver: local
+
+#Docker Network
+networks:
+    app-network:
+        driver: bridge
