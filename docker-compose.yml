@@ -1,9 +1,9 @@
 services:
     server:
         image: 'nginx:stable-alpine'
-        build:
-            context: .
-            dockerfile: ./sima-develop/docker/nginx/Dockerfile
+        #build:
+         #   context: .
+          #  dockerfile: ./sima-develop/docker/nginx/Dockerfile
         container_name: "sima-develop-nginx"
         restart: always
         env_file:
